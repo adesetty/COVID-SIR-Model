@@ -1,0 +1,232 @@
+---
+title: "Assignment 5: Modeling COVID-19"
+author: "Amish Desetty"
+date: "`r Sys.Date()`"
+documentclass: article
+geometry: margin=1in
+fontsize: 11pt
+output:
+  pdf_document:
+    toc: false
+    df_print: kable
+    fig_caption: false
+    number_sections: false
+    dev: pdf
+    highlight: tango
+  html_document:
+    theme: default
+    self_contained: true
+    toc: false
+    df_print: kable
+    fig_caption: false
+    number_sections: false
+    smart: true
+    dev: svg
+---
+
+```{r setup, include = FALSE, echo=FALSE}
+# DO NOT ALTER THIS CHUNK
+knitr::opts_chunk$set(
+  echo = TRUE,
+  eval = TRUE,
+  fig.width = 5,
+  fig.asp = 0.618,
+  dpi = 120,
+  fig.align = "center",
+  cache = FALSE
+)
+# Load required packages
+suppressPackageStartupMessages(library(tidyverse))
+suppressPackageStartupMessages(library(scales))
+covid_real <- read_csv("covid_counts.csv")
+suppressPackageStartupMessages(library(git2r))
+repo_remote <- remote_url(repository())
+```
+
+---
+subtitle: "[Repository link (do not remove)](`r repo_remote`)"
+---
+
+
+## Exercise 1
+
+```{r}
+days_range <- 1:250
+```
+
+
+
+## Exercise 2
+
+```{r}
+susceptible <- 300000000
+infectious <- 1
+recovered <- 0
+```
+
+
+
+## Exercise 3
+
+```{r}
+beta <- 0.25
+gamma <- 0.125
+N <- 300000001
+```
+
+```{r}
+for(day in 2:250){
+  
+  susceptible[day] <- susceptible[day - 1] -
+    (beta * susceptible[day - 1] * infectious[day - 1]) / N
+  
+  infectious[day] <- infectious[day - 1] +
+    (beta * susceptible[day - 1] * infectious[day - 1]) / N -
+    gamma * infectious[day - 1]
+  
+  recovered[day] <- recovered[day - 1] +
+    gamma * infectious[day - 1]
+}
+
+```
+
+
+## Exercise 4
+
+
+```{r}
+library(tibble)
+
+covid_sim <- tibble(
+  days_range = days_range,
+  susceptible = susceptible,
+  infectious = infectious,
+  recovered = recovered
+)
+
+```
+
+
+## Exercise 5
+
+```{r}
+library(tidyr)
+library(ggplot2)
+
+covid_sim_long <- pivot_longer(
+  covid_sim,
+  cols = c(susceptible, infectious, recovered),
+  names_to = "category",
+  values_to = "count"
+)
+```
+
+```{r}
+ggplot(covid_sim_long, aes(x = days_range, y = count, color = category)) +
+  geom_line() +
+  labs(
+    title = "Simulated COVID-19 Cases from SIR Model",
+    x = "Days in USA",
+    y = "Number of People"
+  )
+```
+According to the model, the number of susceptible individuals decreases steadily over time as more people become infected. The number of infectious individuals initially increases rapidly due to exponential growth, reaches a peal, and then declines as more people recover and fewer susceptible individuals remain. The recovered population increases continuously over time as infected individuals recover and gain immunity. Eventually, infections decline toward zero as herd immunity develops and most of the population has either infected or recovered.
+
+
+
+## Exercise 6
+
+```{r}
+ggplot() +
+  geom_line(data = covid_sim,
+            aes(x = days_range, y = infectious, color = "Simulation")) +
+  geom_line(data = covid_real,
+            aes(x = days_in_country, y = current_cases, color = "Real Data")) +
+  labs(
+    title = "Simulated vs Real COVID-19 Cases in the USA",
+    x = "Days Since First Case",
+    y = "Number of Active Cases",
+    color = "Legend"
+  )
+```
+The SIR model captures the overall exponential growth pattern of COVID-19 cases but does not perfectly match the real-world data. In the early days of the pandemic, the simulation predicts slower growth than what occured in reality. Later in the timeline, the curves diverge furthe because the model does not account for social distancing, lockdowns, or policy changes, or behavioral adjustments. Th real-world data reflects human intervention, while the model assumes constant infection and recovery rates. 
+
+
+## Exercise 7
+
+
+```{r}
+ggplot() +
+  geom_line(data = covid_sim,
+            aes(x = days_range, y = infectious, color = "Simulation")) +
+  geom_line(data = covid_real,
+            aes(x = days_in_country, y = current_cases, color = "Real Data")) +
+  labs(
+    title = "Simulated vs Real COVID-19 Cases in the USA",
+    x = "Days Since First Case",
+    y = "Number of Active Cases",
+    color = "Legend"
+  ) +
+  scale_y_log10(labels = scales::trans_format('log10', scales::math_format(10^.x)))
+
+```
+
+
+
+## Exercise 8
+
+```{r}
+
+days_range <- 1:250
+susceptible <- 300000000
+infectious <- 1
+recovered <- 0
+gamma <- 0.125
+beta <- 0.35
+N <- 300000001
+
+for(day in 2:250){
+  
+  susceptible[day] <- susceptible[day - 1] -
+    (beta * susceptible[day - 1] * infectious[day - 1]) / N
+  
+  infectious[day] <- infectious[day - 1] +
+    (beta * susceptible[day - 1] * infectious[day - 1]) / N -
+    gamma * infectious[day - 1]
+  
+  recovered[day] <- recovered[day - 1] +
+    gamma * infectious[day - 1]
+}
+
+
+library(tibble)
+
+covid_sim <- tibble(
+  days_range = days_range,
+  susceptible = susceptible,
+  infectious = infectious,
+  recovered = recovered
+)
+
+ggplot() +
+  geom_line(data = covid_sim,
+            aes(x = days_range, y = infectious, color = "Simulation")) +
+  geom_line(data = covid_real,
+            aes(x = days_in_country, y = current_cases, color = "Real Data")) +
+  labs(
+    title = "Simulated vs Real COVID-19 Cases in the USA",
+    x = "Days Since First Case",
+    y = "Number of Active Cases",
+    color = "Legend"
+  ) +
+  scale_y_log10(labels = scales::trans_format('log10', scales::math_format(10^.x)))
+```
+The reproduction number that best fits the first 60 days is approximately 2.4, meaning each infected person infected about 2.4 other people on average.
+
+
+## Academic Integrity statement
+
+I did not consult any AI tools for this assignment. 
+
+
+
